@@ -458,7 +458,7 @@ inline bool isAligned(const T *ptr)
 // --------------------------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------- memory allocator
 template <typename T>
-T* malloc(uint32_t nData)
+T* _malloc(uint32_t nData)
 {
 	T* ptr = nullptr;
 
@@ -472,7 +472,7 @@ T* malloc(uint32_t nData)
 }
 
 template <typename T>
-void free(T* ptr)
+void _free(T* ptr)
 {
 #if !defined(MIPP_NO_INTRINSICS) && (defined(__SSE2__) || defined(__AVX__) || defined(__MIC__) || defined(__KNCNI__) || defined(__AVX512__) || defined(__AVX512F__))
 	_mm_free(ptr);
@@ -487,8 +487,8 @@ struct allocator
 	typedef T value_type;
 	allocator() { }
 	template <class C> allocator(const allocator<C>& other) { }
-	T* allocate(std::size_t n) { return mipp::malloc<T>((int)n); }
-	void deallocate(T* p, std::size_t n) { mipp::free<T>(p); }
+	T* allocate(std::size_t n) { return mipp::_malloc<T>((int)n); }
+	void deallocate(T* p, std::size_t n) { mipp::_free<T>(p); }
 };
 
 // returns true if and only if storage allocated from ma1 can be deallocated from ma2, and vice versa.
@@ -521,7 +521,7 @@ static inline std::string get_back_trace()
 	bt_str += "\nBacktrace:";
 	for (size_t i = 0; i < size; i++)
 		bt_str += "\n" + std::string(bt_symbs[i]);
-	free(bt_symbs);
+	_free(bt_symbs);
 #endif
 
 	return bt_str;
@@ -1102,7 +1102,7 @@ void dump(const mipp::reg r, std::ostream &stream = std::cout, const uint32_t el
 
 //	const T* data = (T*)&r;
 #ifdef MIPP_ALIGNED_LOADS
-   	T* data = malloc<T>(mipp::N<T>());
+   	T* data = _malloc<T>(mipp::N<T>());
 #else
    	T data[mipp::nElReg<T>()];
 #endif
@@ -1117,7 +1117,7 @@ void dump(const mipp::reg r, std::ostream &stream = std::cout, const uint32_t el
 	}
 	stream << "]";
 #ifdef MIPP_ALIGNED_LOADS
-	free(data);
+	_free(data);
 #endif
 }
 
@@ -1134,7 +1134,7 @@ void dump(const mipp::msk m, std::ostream &stream = std::cout, const uint32_t el
 	{
 		// const int8_t* data = (int8_t*)&r;
 #ifdef MIPP_ALIGNED_LOADS
-		int8_t* data = malloc<int8_t>(N);
+		int8_t* data = _malloc<int8_t>(N);
 #else
 		int8_t data[N];
 #endif
@@ -1147,14 +1147,14 @@ void dump(const mipp::msk m, std::ostream &stream = std::cout, const uint32_t el
 			stream << (((int)l < (int)mipp::Lanes -1) ? " | " : "");
 		}
 #ifdef MIPP_ALIGNED_LOADS
-		free(data);
+		_free(data);
 #endif
 	}
 	else if (bits == 16)
 	{
 		// const int16_t* data = (int16_t*)&r;
 #ifdef MIPP_ALIGNED_LOADS
-		int16_t* data = malloc<int8_t>(N);
+		int16_t* data = _malloc<int8_t>(N);
 #else
 		int16_t data[N];
 #endif
@@ -1167,14 +1167,14 @@ void dump(const mipp::msk m, std::ostream &stream = std::cout, const uint32_t el
 			stream << (((int)l < (int)mipp::Lanes -1) ? " | " : "");
 		}
 #ifdef MIPP_ALIGNED_LOADS
-		free(data);
+		_free(data);
 #endif
 	}
 	else if (bits == 32)
 	{
 		// const int32_t* data = (int32_t*)&r;
 #ifdef MIPP_ALIGNED_LOADS
-		int32_t* data = malloc<int8_t>(N);
+		int32_t* data = _malloc<int8_t>(N);
 #else
 		int32_t data[N];
 #endif
@@ -1194,7 +1194,7 @@ void dump(const mipp::msk m, std::ostream &stream = std::cout, const uint32_t el
 	{
 		// const int64_t* data = (int64_t*)&r;
 #ifdef MIPP_ALIGNED_LOADS
-		int64_t* data = malloc<int8_t>(N);
+		int64_t* data = _malloc<int8_t>(N);
 #else
 		int64_t data[N];
 #endif
@@ -1207,7 +1207,7 @@ void dump(const mipp::msk m, std::ostream &stream = std::cout, const uint32_t el
 			stream << (((int)l < (int)mipp::Lanes -1) ? " | " : "");
 		}
 #ifdef MIPP_ALIGNED_LOADS
-		free(data);
+		_free(data);
 #endif
 	}
 
