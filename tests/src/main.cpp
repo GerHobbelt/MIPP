@@ -3,7 +3,13 @@
 #include <iostream>
 #include <mipp.h>
 
-int main(int argc, const char* argv[])
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(cnt, arr)      mipp_tests_main(cnt, arr)
+#endif
+
+int main(int argc, const char** argv)
 {
 	std::cout << "MIPP tests" << std::endl;
 	std::cout << "----------" << std::endl << std::endl;

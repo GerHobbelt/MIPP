@@ -4,7 +4,13 @@
 
 #include "../src/mipp.h"
 
-int main(int argc, char** argv)
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(cnt, arr)      mipp_example_initreg_main(cnt, arr)
+#endif
+
+int main(int argc, const char** argv)
 {
 	std::random_device rd;
 	std::mt19937 g(rd());
