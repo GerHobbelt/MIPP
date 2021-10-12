@@ -125,6 +125,8 @@ public:
 	inline void        loadu        (const T* data)                              { r = mipp::loadu<T>(data);                      }
 	inline void        store        (T* data)                              const { mipp::store<T>(data, r);                       }
 	inline void        storeu       (T* data)                              const { mipp::storeu<T>(data, r);                      }
+	inline T           get          (const size_t index)                   const { return mipp::get<T>(r, index);                 }
+	inline T           getfirst     ()                                     const { return mipp::getfirst<T>(r);                   }
 	inline Reg_2<T>    low          ()                                     const { return mipp::low <T>(r);                       }
 	inline Reg_2<T>    high         ()                                     const { return mipp::high<T>(r);                       }
 	inline Reg<T>      shuff        (const Reg<T> v_shu)                   const { return mipp::shuff        <T>(r, v_shu.r);     }
@@ -216,6 +218,8 @@ public:
 	inline void        loadu        (const T* data)                              { r = data[0];                                   }
 	inline void        store        (T* data)                              const { data[0] = r;                                   }
 	inline void        storeu       (T* data)                              const { data[0] = r;                                   }
+	inline T           get          (const size_t index)                   const { return r;                                      }
+	inline T           getfirst     ()                                     const { return r;                                      }
 	inline Reg_2<T>    low          ()                                     const { return r;                                      }
 	inline Reg_2<T>    high         ()                                     const { return r;                                      }
 	inline Reg<T>      shuff        (const Reg<T> v_shu)                   const { return *this;                                  }
@@ -301,6 +305,31 @@ public:
 	inline Reg<T>      xorb         (const Msk<N<T>()> m)                  const { return this->xorb (m.template toReg<T>().r); }
 
 #ifndef MIPP_NO_INTRINSICS
+	template <typename TI>
+	inline void gather(const T* mem, const Reg<TI> idx)
+	{
+		auto r = mipp::gather<T,TI>(mem, idx.r);
+		this->r = r;
+	}
+	template <typename TI>
+	inline void scatter(T* mem, const Reg<TI> idx) const
+	{
+		mipp::scatter<T,TI>(mem, idx.r, this->r);
+	}
+#else
+	template <typename TI>
+	inline void gather(const T* mem, const Reg<TI> idx)
+	{
+		this->r = mem[idx.r];
+	}
+	template <typename TI>
+	inline void scatter(T* mem, const Reg<TI> idx) const
+	{
+		mem[idx.r] = this->r;
+	}
+#endif
+
+#ifndef MIPP_NO_INTRINSICS
 	template <typename T2> inline Reg<T2> cvt ()               const { return mipp::cvt<T,T2>(r);       }
 	template <typename T2> inline Reg<T2> pack(const Reg<T> v) const { return mipp::pack<T,T2>(r, v.r); }
 	template <typename T2> inline Reg<T2> cast()               const { return Reg<T2>(this->r);         }
@@ -362,7 +391,7 @@ public:
 	inline Msk<N<T>()> operator>=(Reg<T> v) const { return this->cmpge (v); }
 
 #ifndef MIPP_NO_INTRINSICS
-	inline T operator[](const size_t index) const { return mipp::get<T>(this->r, index); }
+	inline T operator[](const size_t index) const { return this->get(index); }
 #else
 	inline T operator[](const size_t index) const { return r; }
 #endif
@@ -418,6 +447,45 @@ public:
 	{
 		return mipp::maskz<T, I3>(m, *this, b, c);
 	}
+
+	template <proto_IL<T> IL = mipp::oloadu<T>>
+	inline void maskzld(const Msk<N<T>()> m, const T* memp)
+	{
+		mipp::Reg<T> r = mipp::maskzld<T, IL>(m, memp);
+		this->r = r;
+	}
+
+	template <proto_IL<T> IL = mipp::oloadu<T>, proto_IS<T> IS = mipp::storeu<T>>
+	inline void maskzlds(const Msk<N<T>()> m, const T* memp)
+	{
+		mipp::Reg<T> r = mipp::maskzld<T, IL, IS>(m, memp);
+		this->r = r;
+	}
+
+	template <proto_IS<T> IS = mipp::storeu<T>, proto_IL<T> IL = mipp::oloadu<T>>
+	inline void maskst(const Msk<N<T>()> m, T* memp) const
+	{
+		return mipp::maskst<T, IS, IL>(m, memp, *this);
+	}
+
+	template <proto_IS<T> IS = mipp::storeu<T>>
+	inline void masksts(const Msk<N<T>()> m, T* memp) const
+	{
+		return mipp::masksts<T, IS>(m, memp, *this);
+	}
+
+	template <typename TI>
+	inline void maskzgat(const Msk<N<T>()> m, const T* memp, const Reg<TI> idx)
+	{
+		mipp::Reg<T> r = mipp::maskzgat(m, memp, idx);
+		this->r = r;
+	}
+
+	template <typename TI>
+	inline void masksca(const Msk<N<T>()> m, T* memp, const Reg<TI> idx) const
+	{
+		mipp::masksca(m, memp, idx, *this);
+	}
 };
 
 template <int N>
@@ -470,11 +538,17 @@ public:
 	~Msk() = default;
 
 #ifndef MIPP_NO_INTRINSICS
-	inline void set0(              ) { m = mipp::set0<N>(   ); }
-	inline void set1(const bool val) { m = mipp::set1<N>(val); }
+	inline void set     (const bool vals[N])       { m = mipp::set <N>(vals);       }
+	inline void set0    (                  )       { m = mipp::set0<N>(    );       }
+	inline void set1    (const bool val    )       { m = mipp::set1<N>(val );       }
+	inline bool get     (const size_t index) const { return mipp::get<N>(m, index); }
+	inline bool getfirst(                  ) const { return mipp::getfirst<N>(m);   }
 #else
-	inline void set0(              ) { m = 0;                   }
-	inline void set1(const bool val) { m = val ? ~0 : 0;        }
+	inline void set     (const bool vals[N])       { m = *vals ? ~0 : 0; }
+	inline void set0    (                  )       { m = 0;              }
+	inline void set1    (const bool val    )       { m = val ? ~0 : 0;   }
+	inline bool get     (const size_t index) const { return m;           }
+	inline bool getfirst(                  ) const { return m;           }
 #endif
 
 #ifndef MIPP_NO_INTRINSICS
@@ -528,7 +602,7 @@ public:
 	inline Msk<N>  operator>> (const uint32_t n) const { return this->rshift(n);                 }
 
 #ifndef MIPP_NO_INTRINSICS
-	inline bool operator[](const size_t index) const { return mipp::get<N>(this->m, index); }
+	inline bool operator[](const size_t index) const { return this->get(index); }
 #else
 	inline bool operator[](const size_t index) const { return m; }
 #endif
@@ -559,8 +633,12 @@ public:
 #endif
 
 #ifndef MIPP_NO_INTRINSICS
-	inline T operator[](const size_t index) const { return mipp::get<T>(this->r, index); }
+	inline T get       (const size_t index) const { return mipp::get<T>(r, index); }
+	inline T getfirst  (                  ) const { return mipp::getfirst<T>(r);   }
+	inline T operator[](const size_t index) const { return this->get(index);       }
 #else
+	inline T get       (const size_t index) const { return r; }
+	inline T getfirst  (                  ) const { return r; }
 	inline T operator[](const size_t index) const { return r; }
 #endif
 
@@ -681,20 +759,28 @@ std::ostream& operator<<(std::ostream& os, const Msk<N>& m)
 }
 #endif
 
-//template <typename T> inline Reg<T>      load         (const T* in)                                           { Reg<T> r; r.load (in); return r; }
-//template <typename T> inline Reg<T>      loadu        (const T* in)                                           { Reg<T> r; r.loadu(in); return r; }
-//template <typename T> inline void        store        (T* out, const Reg<T> v)                                { v.store (out);                   }
-//template <typename T> inline void        storeu       (T* out, const Reg<T> v)                                { v.storeu(out);                   }
-//template <typename T> inline Reg<T>      set          (const T in[N<T>()])                                    { Reg<T> r; r.set(in);   return r; }
-//#ifdef _MSC_VER
-//template <int      N> inline Msk<N>      set          (const bool in[])                                       { Msk<N> m; m.set(in);   return m; }
-//#else
-//template <int      N> inline Msk<N>      set          (const bool in[N])                                      { Msk<N> m; m.set(in);   return m; }
-//#endif
-//template <typename T> inline Reg<T>      set1         (const T val)                                           { Reg<T> r; r.set1(val); return r; }
-//template <int      N> inline Msk<N>      set1         (const bool val)                                        { Msk<N> m; m.set1(val); return m; }
-//template <typename T> inline Reg<T>      set0         ()                                                      { Reg<T> r; r.set0();    return r; }
-//template <int      N> inline Msk<N>      set0         ()                                                      { Msk<N> m; m.set0();    return m; }
+template <typename T> inline Reg<T>      oload        (const T* in)                                           { Reg<T> r; r.load (in); return r; }
+template <typename T> inline Reg<T>      oloadu       (const T* in)                                           { Reg<T> r; r.loadu(in); return r; }
+template <typename T> inline void        store        (T* out, const Reg<T> v)                                { v.store (out);                   }
+template <typename T> inline void        storeu       (T* out, const Reg<T> v)                                { v.storeu(out);                   }
+template <typename T> inline Reg<T>      oset         (const T in[N<T>()])                                    { Reg<T> r; r.set(in);   return r; }
+#ifdef _MSC_VER
+template <int      N> inline Msk<N>      oset         (const bool in[])                                       { Msk<N> m; m.set(in);   return m; }
+#else
+template <int      N> inline Msk<N>      oset         (const bool in[N])                                      { Msk<N> m; m.set(in);   return m; }
+#endif
+template <typename T> inline T           get          (const Reg<T> v, const size_t index)                    { return v.get(index);             }
+template <typename T> inline T           get          (const Reg_2<T> v, const size_t index)                  { return v.get(index);             }
+template <int      N> inline bool        get          (const Msk<N> m, const size_t index)                    { return m.get(index);             }
+template <typename T> inline T           getfirst     (const Reg<T> v)                                        { return v.getfirst();             }
+template <typename T> inline T           getfirst     (const Reg_2<T> v)                                      { return v.getfirst();             }
+template <int      N> inline bool        getfirst     (const Msk<N> m)                                        { return m.getfirst();             }
+template <typename T> inline Reg<T>      oset1        (const T val)                                           { Reg<T> r; r.set1(val); return r; }
+template <int      N> inline Msk<N>      oset1        (const bool val)                                        { Msk<N> m; m.set1(val); return m; }
+template <typename T> inline Reg<T>      oset0        ()                                                      { Reg<T> r; r.set0();    return r; }
+template <int      N> inline Msk<N>      oset0        ()                                                      { Msk<N> m; m.set0();    return m; }
+template <typename T> inline Reg_2<T>    low          (const Reg<T> v)                                        { return v.low();                  }
+template <typename T> inline Reg_2<T>    high         (const Reg<T> v)                                        { return v.high();                 }
 template <typename T> inline Reg<T>      shuff        (const Reg<T> v1, const Reg<T> v2)                      { return v1.shuff(v2);             }
 template <typename T> inline Reg<T>      shuff2       (const Reg<T> v1, const Reg<T> v2)                      { return v1.shuff2(v2);            }
 template <typename T> inline Reg<T>      shuff4       (const Reg<T> v1, const Reg<T> v2)                      { return v1.shuff4(v2);            }
@@ -826,4 +912,16 @@ inline Reg<T2> pack(const Reg<T1> v1, const Reg<T1> v2) {
 template <typename T1, typename T2>
 inline Reg<T2> cast(const Reg<T1> v) {
 	return v.template cast<T2>();
+}
+
+template <typename TD, typename TI>
+inline Reg<TD> gather(const TD* mem, const Reg<TI> idx) {
+	Reg<TD> r;
+	r.gather(mem, idx);
+	return r;
+}
+
+template <typename TD, typename TI>
+inline void scatter(TD* mem, const Reg<TI> idx, const Reg<TD> r) {
+	r.scatter(mem, idx);
 }
