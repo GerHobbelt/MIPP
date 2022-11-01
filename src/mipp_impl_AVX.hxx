@@ -351,12 +351,20 @@
     // ------------------------------------------------------------------------------------------------------------ getfirst
 	template <>
 	inline double getfirst<double>(const mipp::reg r){
+#if !defined(__APPLE__)
 		return _mm256_cvtsd_f64(_mm256_castps_pd(r));
+#else
+		return _mm_cvtsd_f64(_mm_castsi128_pd(_mm256_extractf128_si256(_mm256_castps_si256(r), 0)));
+#endif
 	}
 
 	template <>
 	inline float getfirst<float>(const mipp::reg r){
+#if !defined(__APPLE__)
 		return _mm256_cvtss_f32(r);
+#else
+		return _mm_cvtss_f32(_mm_castsi128_ps(_mm256_extractf128_si256(_mm256_castps_si256(r), 0)));
+#endif
 	}
 
     template <>
@@ -1048,6 +1056,61 @@
 		return mipp::loadu<int64_t>(out);
 	}
 
+#ifdef __AVX2__
+	template <> inline reg add<int16_t>(const reg v1, const reg v2);
+	template <> inline reg mul<int16_t>(const reg v1, const reg v2);
+
+	template <>
+	inline reg shuff<int16_t>(const reg v, const reg cm) {
+		// expand epi16 cm[i] to epi8 cm[i]*2,cm[i]*2+1
+		const reg shuffle_mask =
+			add<int16_t>(
+					mul<int16_t>(cm, set1<int16_t>(0x0202)),
+					set1<int16_t>(0x0100));
+		// extract cross-lane shuffle indices
+		const reg cross_lane_mask =
+			_mm256_castsi256_ps(_mm256_xor_si256(
+					_mm256_and_si256(_mm256_castps_si256(cm), _mm256_castps_si256(set1<int16_t>(0x0008))),
+					_mm256_set_epi16(8,8,8,8,8,8,8,8, 0,0,0,0,0,0,0,0)));
+		if (_mm256_testz_si256(_mm256_castps_si256(cross_lane_mask), _mm256_castps_si256(cross_lane_mask))) {
+			return _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v), _mm256_castps_si256(shuffle_mask)));
+		} else {
+			const reg v_swap	 = _mm256_castsi256_ps(_mm256_permute2x128_si256(_mm256_castps_si256(v), _mm256_castps_si256(v), 1));
+			const reg v_shuffle	 = _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v), _mm256_castps_si256(shuffle_mask)));
+			const reg v_swap_shuffle = _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v_swap), _mm256_castps_si256(shuffle_mask)));
+			// transform cross-lane mask into blend mask
+			const reg blend_mask	 =
+				mul<int16_t>(
+						set1<int16_t>(0xffff),
+						_mm256_castsi256_ps(_mm256_srli_epi16(_mm256_castps_si256(cross_lane_mask), 3)));
+			return _mm256_castsi256_ps(_mm256_blendv_epi8(_mm256_castps_si256(v_shuffle), _mm256_castps_si256(v_swap_shuffle), _mm256_castps_si256(blend_mask)));
+		}
+	}
+
+	template <>
+	inline reg shuff<int8_t>(const reg v, const reg cm) {
+		// extract cross-lane shuffle indices
+		const reg cross_lane_mask =
+			_mm256_castsi256_ps(_mm256_xor_si256(
+					_mm256_and_si256(_mm256_castps_si256(cm), _mm256_castps_si256(set1<int8_t>(0x10))),
+					_mm256_set_epi8(
+						0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10, 0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,
+						0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00)));
+		if (_mm256_testz_si256(_mm256_castps_si256(cross_lane_mask), _mm256_castps_si256(cross_lane_mask))) {
+			return _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v), _mm256_castps_si256(cm)));
+		} else {
+			const reg v_swap	 = _mm256_castsi256_ps(_mm256_permute2x128_si256(_mm256_castps_si256(v), _mm256_castps_si256(v), 1));
+			const reg v_shuffle	 = _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v), _mm256_castps_si256(cm)));
+			const reg v_swap_shuffle = _mm256_castsi256_ps(_mm256_shuffle_epi8(_mm256_castps_si256(v_swap), _mm256_castps_si256(cm)));
+			// transform cross-lane mask into blend mask
+			const reg blend_mask	 =
+				mul<int16_t>(
+						set1<int16_t>(0x00ff),
+						_mm256_castsi256_ps(_mm256_srli_epi16(_mm256_castps_si256(cross_lane_mask), 4)));
+			return _mm256_castsi256_ps(_mm256_blendv_epi8(_mm256_castps_si256(v_shuffle), _mm256_castps_si256(v_swap_shuffle), _mm256_castps_si256(blend_mask)));
+		}
+	}
+#else
 	template <>
 	inline reg shuff<int16_t>(const reg v, const reg cm) {
 		constexpr int N = mipp::N<int16_t>();
@@ -1081,6 +1144,8 @@
 
 		return mipp::loadu<int8_t>(out);
 	}
+#endif
+
 #if !defined(__clang__) && !defined(__llvm__) && defined(__GNUC__) && defined(__cplusplus)
 #pragma GCC diagnostic pop
 #endif
@@ -3426,6 +3491,17 @@
 	template <>
 	inline reg round<double>(const reg v) {
 		return _mm256_castpd_ps(_mm256_round_pd(_mm256_castps_pd(v), _MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC));
+	}
+
+	// ---------------------------------------------------------------------------------------------------------- trunc
+	template <>
+	inline reg trunc<float>(const reg v) {
+		return _mm256_round_ps(v, _MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC);
+	}
+
+	template <>
+	inline reg trunc<double>(const reg v) {
+		return _mm256_castpd_ps(_mm256_round_pd(_mm256_castps_pd(v), _MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC));
 	}
 
 	// ------------------------------------------------------------------------------------------------------------ cvt
