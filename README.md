@@ -7,58 +7,17 @@
 
 ## Purpose
 
-MIPP is a portable and Open-source wrapper (MIT license) for vector intrinsic 
-functions (SIMD) written in C++11. It works for SSE, AVX, AVX-512 and ARM NEON 
-(32-bit and 64-bit) instructions. MIPP wrapper supports simple/double precision 
-floating-point numbers and also signed integer arithmetic (64-bit, 32-bit, 
-16-bit and 8-bit).
+MIPP is a portable and Open-source wrapper (MIT license) for vector intrinsic
+functions (SIMD) written in C++11. It works for SSE, AVX, AVX-512, ARM NEON
+and SVE (work in progress) instructions. MIPP wrapper supports simple/double
+precision floating-point numbers and also signed integer arithmetic (64-bit,
+32-bit, 16-bit and 8-bit).
 
-With the MIPP wrapper you do not need to write a specific intrinsic code 
-anymore. Just use provided functions and the wrapper will automatically 
+With the MIPP wrapper you do not need to write a specific intrinsic code
+anymore. Just use provided functions and the wrapper will automatically
 generates the right intrisic calls for your specific architecture.
 
-## Miscellaneous
-
-### Scientific publications
-
-Adrien Cassagne, Olivier Aumage, Denis Barthou, Camille Leroux and Christophe Jégo,  
-[**MIPP: a Portable C++ SIMD Wrapper and its use for Error Correction Coding in 5G Standard**](https://doi.org/10.1145/3178433.3178435),  
-*The 5th International Workshop on Programming Models for SIMD/Vector Processing (WPMVP 2018), February 2018.*
-
-Adrien Cassagne, Olivier Hartmann, Mathieu Léonardon, Kun He, Camille Leroux, Romain Tajan, Olivier Aumage, Denis Barthou, Thibaud Tonnellier, Vincent Pignoly, Bertrand Le Gal and Christophe Jégo,  
-[**AFF3CT: A Fast Forward Error Correction Toolbox!**](https://doi.org/10.1016/j.softx.2019.100345),  
-*Elsevier SoftwareX, October 2019.*
-
-Mathieu Léonardon, Adrien Cassagne, Camille Leroux, Christophe Jégo, Louis-Philippe Hamelin and Yvon Savaria,  
-[**Fast and Flexible Software Polar List Decoders**](https://doi.org/10.1007/s11265-018-1430-3),  
-*Springer Journal of Signal Processing Systems (JSPS), January 2019.*
-
-
-Alireza Ghaffari, Mathieu Leonardon, Adrien Cassagne, Camille Leroux, Yvon Savaria,  
-[**Toward High-Performance Implementation of 5G SCMA Algorithms**](https://doi.org/10.1109/ACCESS.2019.2891597),  
-*IEEE Acces, January 2019.*
-
-
-Adrien Cassagne, Thibaud Tonnellier, Camille Leroux, Bertrand Le Gal, Olivier Aumage and Denis Barthou,  
-[**Beyond Gbps Turbo Decoder on Multi-Core CPUs**](https://doi.org/10.1109/ISTC.2016.7593092),  
-*The 10th International Symposium on Turbo Codes and Iterative Information Processing (ISTC 2016), September 2016.*
-
-
-Adrien Cassagne, Olivier Aumage, Camille Leroux, Denis Barthou and Bertrand Le Gal,  
-[**Energy Consumption Analysis of Software Polar Decoders on Low Power Processors**](https://doi.org/10.1109/EUSIPCO.2016.7760327),  
-*The 24nd European Signal Processing Conference (EUSIPCO 2016), September 2016.*
-
-
-Adrien Cassagne, Bertrand Le Gal, Camille Leroux, Olivier Aumage and Denis Barthou,  
-[**An Efficient, Portable and Generic Library for Successive Cancellation Decoding of Polar Codes**](https://doi.org/10.1007/978-3-319-29778-1_19),  
-*The 28th International Workshop on Languages and Compilers for Parallel Computing (LCPC 2015), September 2015.*
-
-### Open-source projects in which MIPP is used
-
-  - [AFF3CT](https://github.com/aff3ct/aff3ct): A Fast Forward Error Correction 
-  Toolbox!
-  - [mandelbrot](https://gitlab.inria.fr/acassagn/mandelbrot): the Mandelbrot 
-  fractal, sequential and SIMD implementations.
+If you are interested by ARM SVE status, [please follow this link](#arm-sve).
 
 ## Short documentation
 
@@ -101,30 +60,6 @@ option (since most of current NEON instructions are not IEEE-754 compatible).
 MIPP also use some nice features provided by the C++11 and so we have to add the 
 `-std=c++11` flag to compile the code. Your are now ready to run your code with 
 the mipp.h wrapper.
-
-
-You can install the header files (locally) to allow finding them
-with cmake's `find_package()`:
-
-```
-git clone https://github.com/aff3ct/MIPP.git
-cmake -S MIPP -B MIPP_build -DCMAKE_INSTALL_PREFIX=$HOME/.local
-cmake -S MIPP -B MIPP_build  # alternative installs into system, defaults to /usr/local
-cmake --build MIPP_build --target install  # might require sudo
-```
-
-for building and running the tests
-
-```
-cmake --build MIPP_build --target test
-```
-
-for later uninstall:
-
-```
-cmake --build MIPP_build --target uninstall
-```
-
 
 ### Sequential mode
 
@@ -282,7 +217,7 @@ mipp::Reg<float> r1, r2, r3, r4;
 
 r1 = 2.0;                     // r1 = | +2.0 | +2.0 | +2.0 | +2.0 |
 r2 = 3.0;                     // r2 = | +3.0 | +3.0 | +3.0 | +3.0 |
-r3 = 1.0;                     // r3 = | +1.0 | +1.0 | +1.0 | +1.0 |
+r2 = 1.0;                     // r3 = | +1.0 | +1.0 | +1.0 | +1.0 |
 
 // r4 = (r1 * r2) + r3
 r4 = mipp::fmadd(r1, r2, r3); // r4 = | +7.0 | +7.0 | +7.0 | +7.0 |
@@ -654,4 +589,69 @@ will need to call the `mipp::deinterleave` operation before and the
 | `asinh`        | `Reg<T>   asinh  (const Reg<T> r)`                       | Computes the inverse hyperbolic sines of `r`.                        | `double` (only on `icpc`), `float` |
 | `acosh`        | `Reg<T>   acosh  (const Reg<T> r)`                       | Computes the inverse hyperbolic cosines of `r`.                      | `double` (only on `icpc`), `float` |
 | `atanh`        | `Reg<T>   atanh  (const Reg<T> r)`                       | Computes the inverse hyperbolic tangent of `r`.                      | `double` (only on `icpc`), `float` |
+
+## ARM SVE
+
+### SVE Length Specific
+
+An ARM SVE version is under construction. This version uses *SVE length
+specific* which is more appropriated to the MIPP architecture. This way, the
+size of the *MIPP registers* is defined at compilation. As a reminder, the 
+vector length can vary from a minimum of 128 bits up to a maximum of 2048 bits, 
+at 128-bit increments. It is specified at the compilation time by the 
+`-msve-vector-bits=<size>` flag.
+
+### Supported MIPP Operations
+
+- **Memory operations:** `load`, `store`, `blend`, `set`, `set1`, `blend`, 
+  `gather`, `scatter`, `maskzld`, `maskst`, `maskzgat`, `masksca`
+- **Logical comparisons:** `cmpeq`, `cmneq`
+- **Bitwise operations:** `andb`, `notb` (msk)
+- **Arithmetic operations:** `anddb`, `fmadd`, `add`, `sub`, `mul`, `div`
+- **Reductions:** `testz(msk), Reduce<T, add>`
+
+*Byte* and *word* operations are not yet implemented.
+
+## Miscellaneous
+
+### Scientific publications
+
+Adrien Cassagne, Olivier Aumage, Denis Barthou, Camille Leroux and Christophe Jégo,  
+[**MIPP: a Portable C++ SIMD Wrapper and its use for Error Correction Coding in 5G Standard**](https://doi.org/10.1145/3178433.3178435),  
+*The 5th International Workshop on Programming Models for SIMD/Vector Processing (WPMVP 2018), February 2018.*
+
+Adrien Cassagne, Olivier Hartmann, Mathieu Léonardon, Kun He, Camille Leroux, Romain Tajan, Olivier Aumage, Denis Barthou, Thibaud Tonnellier, Vincent Pignoly, Bertrand Le Gal and Christophe Jégo,  
+[**AFF3CT: A Fast Forward Error Correction Toolbox!**](https://doi.org/10.1016/j.softx.2019.100345),  
+*Elsevier SoftwareX, October 2019.*
+
+Mathieu Léonardon, Adrien Cassagne, Camille Leroux, Christophe Jégo, Louis-Philippe Hamelin and Yvon Savaria,  
+[**Fast and Flexible Software Polar List Decoders**](https://doi.org/10.1007/s11265-018-1430-3),  
+*Springer Journal of Signal Processing Systems (JSPS), January 2019.*
+
+
+Alireza Ghaffari, Mathieu Leonardon, Adrien Cassagne, Camille Leroux, Yvon Savaria,  
+[**Toward High-Performance Implementation of 5G SCMA Algorithms**](https://doi.org/10.1109/ACCESS.2019.2891597),  
+*IEEE Acces, January 2019.*
+
+
+Adrien Cassagne, Thibaud Tonnellier, Camille Leroux, Bertrand Le Gal, Olivier Aumage and Denis Barthou,  
+[**Beyond Gbps Turbo Decoder on Multi-Core CPUs**](https://doi.org/10.1109/ISTC.2016.7593092),  
+*The 10th International Symposium on Turbo Codes and Iterative Information Processing (ISTC 2016), September 2016.*
+
+
+Adrien Cassagne, Olivier Aumage, Camille Leroux, Denis Barthou and Bertrand Le Gal,  
+[**Energy Consumption Analysis of Software Polar Decoders on Low Power Processors**](https://doi.org/10.1109/EUSIPCO.2016.7760327),  
+*The 24nd European Signal Processing Conference (EUSIPCO 2016), September 2016.*
+
+
+Adrien Cassagne, Bertrand Le Gal, Camille Leroux, Olivier Aumage and Denis Barthou,  
+[**An Efficient, Portable and Generic Library for Successive Cancellation Decoding of Polar Codes**](https://doi.org/10.1007/978-3-319-29778-1_19),  
+*The 28th International Workshop on Languages and Compilers for Parallel Computing (LCPC 2015), September 2015.*
+
+### Open-source projects in which MIPP is used
+
+  - [AFF3CT](https://github.com/aff3ct/aff3ct): A Fast Forward Error Correction 
+  Toolbox!
+  - [mandelbrot](https://gitlab.inria.fr/acassagn/mandelbrot): the Mandelbrot 
+  fractal, sequential and SIMD implementations.
 
