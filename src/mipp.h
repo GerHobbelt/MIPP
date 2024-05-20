@@ -943,7 +943,6 @@ inline reg atanh(const reg r)
 // -------------------------------------------------------------------------------------------------- complex functions
 // --------------------------------------------------------------------------------------------------------------------
 
-
 template <typename T>
 inline regx2 cadd(const regx2 v1, const regx2 v2)
 {
@@ -1000,6 +999,7 @@ inline reg norm(const regx2 v)
 {
 	return mipp::add<T>(mipp::mul<T>(v.val[0], v.val[0]), mipp::mul<T>(v.val[1], v.val[1]));
 }
+
 // ------------------------------------------------------------------------------------------------------------ masking
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -1725,12 +1725,12 @@ template <> inline void store<uint8_t >(uint8_t  *mem_addr, const reg v) { store
 
 // ---------------------------------------------------------------------------------------------------------------- set
 #ifdef MIPP_64BIT
-template <> inline reg set<uint64_t>(const uint64_t vals[nElReg<uint64_t>()]) { return load<uint64_t>(vals); }
+template <> inline reg set<uint64_t>(const uint64_t vals[N<uint64_t>()]) { return loadu<uint64_t>(vals); }
 #endif
-template <> inline reg set<uint32_t>(const uint32_t vals[nElReg<uint32_t>()]) { return load<uint32_t>(vals); }
+template <> inline reg set<uint32_t>(const uint32_t vals[N<uint32_t>()]) { return loadu<uint32_t>(vals); }
 #ifdef MIPP_BW
-template <> inline reg set<uint16_t>(const uint16_t vals[nElReg<uint16_t>()]) { return load<uint16_t>(vals); }
-template <> inline reg set<uint8_t> (const uint8_t  vals[nElReg<uint8_t >()]) { return load<uint8_t >(vals); }
+template <> inline reg set<uint16_t>(const uint16_t vals[N<uint16_t>()]) { return loadu<uint16_t>(vals); }
+template <> inline reg set<uint8_t> (const uint8_t  vals[N<uint8_t >()]) { return loadu<uint8_t >(vals); }
 #endif
 
 // ---------------------------------------------------------------------------------------------------------------- low
@@ -1765,34 +1765,38 @@ template <> inline reg combine<uint8_t >(const reg_2 v1, const reg_2 v2) { retur
 
 // -------------------------------------------------------------------------------------------------------------- cmask
 #ifdef MIPP_64BIT
-template <> inline reg cmask<uint64_t>(const uint32_t val[nElReg<int64_t>()]) { return cmask<int64_t>(val); }
+template <> inline reg cmask<uint64_t>(const uint32_t val[N<int64_t>()]) { return cmask<int64_t>(val); }
 #endif
-template <> inline reg cmask<uint32_t>(const uint32_t val[nElReg<int32_t>()]) { return cmask<int32_t>(val); }
+template <> inline reg cmask<uint32_t>(const uint32_t val[N<int32_t>()]) { return cmask<int32_t>(val); }
 #ifdef MIPP_BW
-template <> inline reg cmask<uint16_t>(const uint32_t val[nElReg<int16_t>()]) { return cmask<int16_t>(val); }
-template <> inline reg cmask<uint8_t >(const uint32_t val[nElReg<int8_t >()]) { return cmask<int8_t >(val); }
+template <> inline reg cmask<uint16_t>(const uint32_t val[N<int16_t>()]) { return cmask<int16_t>(val); }
+template <> inline reg cmask<uint8_t >(const uint32_t val[N<int8_t >()]) { return cmask<int8_t >(val); }
 #endif
 
 // ------------------------------------------------------------------------------------------------------------- cmask2
+#ifndef MIPP_NO_INTRINSICS
 #ifdef MIPP_64BIT
-template <> inline reg cmask2<uint64_t>(const uint32_t val[nElReg<int64_t>()/2]) { return cmask2<int64_t>(val); }
+template <> inline reg cmask2<uint64_t>(const uint32_t val[N<int64_t>()/2]) { return cmask2<int64_t>(val); }
 #endif
-template <> inline reg cmask2<uint32_t>(const uint32_t val[nElReg<int32_t>()/2]) { return cmask2<int32_t>(val); }
+template <> inline reg cmask2<uint32_t>(const uint32_t val[N<int32_t>()/2]) { return cmask2<int32_t>(val); }
 #ifdef MIPP_BW
-template <> inline reg cmask2<uint16_t>(const uint32_t val[nElReg<int16_t>()/2]) { return cmask2<int16_t>(val); }
-template <> inline reg cmask2<uint8_t >(const uint32_t val[nElReg<int8_t >()/2]) { return cmask2<int8_t >(val); }
+template <> inline reg cmask2<uint16_t>(const uint32_t val[N<int16_t>()/2]) { return cmask2<int16_t>(val); }
+template <> inline reg cmask2<uint8_t >(const uint32_t val[N<int8_t >()/2]) { return cmask2<int8_t >(val); }
+#endif
 #endif
 
 // ------------------------------------------------------------------------------------------------------------- cmask4
+#ifndef MIPP_NO_INTRINSICS
 #if(!MIPP_REGISTER_SIZE == 128)
 #ifdef MIPP_64BIT
-template <> inline reg cmask4<uint64_t>(const uint32_t val[nElReg<int64_t>()/4]) { return cmask4<int64_t>(val); }
+template <> inline reg cmask4<uint64_t>(const uint32_t val[N<int64_t>()/4]) { return cmask4<int64_t>(val); }
 #endif
 #endif
-template <> inline reg cmask4<uint32_t>(const uint32_t val[nElReg<int32_t>()/4]) { return cmask4<int32_t>(val); }
+template <> inline reg cmask4<uint32_t>(const uint32_t val[N<int32_t>()/4]) { return cmask4<int32_t>(val); }
 #ifdef MIPP_BW
-template <> inline reg cmask4<uint16_t>(const uint32_t val[nElReg<int16_t>()/4]) { return cmask4<int16_t>(val); }
-template <> inline reg cmask4<uint8_t >(const uint32_t val[nElReg<int8_t >()/4]) { return cmask4<int8_t >(val); }
+template <> inline reg cmask4<uint16_t>(const uint32_t val[N<int16_t>()/4]) { return cmask4<int16_t>(val); }
+template <> inline reg cmask4<uint8_t >(const uint32_t val[N<int8_t >()/4]) { return cmask4<int8_t >(val); }
+#endif
 #endif
 
 // -------------------------------------------------------------------------------------------------------------- shuff
@@ -2076,8 +2080,6 @@ template <> inline reg div4<uint32_t>(const reg v1) { return rshift<uint32_t>(v1
 template <> inline reg div4<uint16_t>(const reg v1) { return rshift<uint16_t>(v1, 2); }
 template <> inline reg div4<uint8_t >(const reg v1) { return rshift<uint8_t >(v1, 2); }
 #endif
-
-// --------------------------------------------------------------------------------------------------- reduction (TODO)
 
 // -------------------------------------------------------------------------------------------------------------- testz
 #ifdef MIPP_64BIT
