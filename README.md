@@ -38,7 +38,10 @@ the MIPP methods. This has been fixed on `msvc` `14.21` (Microsoft Visual Studio
 
 ### Install and Configure your Code
 
-You don't have to install MIPP because it is a simple C++ header file.
+You don't have to install MIPP because it is a simple C++ header file. The 
+headers are located in the `include` folder (note that this location has changed 
+since commit `6795891`, before they were located in the `src` folder). 
+
 Just include the header into your source files when the wrapper is needed.
 
 ```cpp
@@ -292,8 +295,8 @@ r1 = 2.0;                      // r1 = | +2.0 | +2.0 | +2.0 | +2.0 |
 r2 = 3.0;                      // r2 = | +3.0 | +3.0 | +3.0 | +3.0 |
 r3 = 1.0;                      // r3 = | +1.0 | +1.0 | +1.0 | +1.0 |
 
-// r4 = -((r1 * r2) + r3)
-r4 = mipp::fnmadd(r1, r2, r3); // r4 = | -7.0 | -7.0 | -7.0 | -7.0 |
+// r4 = -(r1 * r2) + r3
+r4 = mipp::fnmadd(r1, r2, r3); // r4 = | -5.0 | -5.0 | -5.0 | -5.0 |
 ```
 
 **Square root** of a vector register:
