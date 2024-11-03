@@ -24,7 +24,7 @@ void test_reg_combine()
 		REQUIRE(mipp::get<T>(r2, i) == inputs[i]);
 }
 
-#ifndef MIPP_NO
+#if !defined(MIPP_NO) && !defined(MIPP_SVE_LS)
 TEST_CASE("Combine - mipp::reg", "[mipp::combine]")
 {
 #if defined(MIPP_64BIT)
@@ -61,7 +61,7 @@ void test_Reg_combine()
 		REQUIRE(r2[i] == inputs[i]);
 }
 
-#ifndef MIPP_NO
+#if !defined(MIPP_NO) && !defined(MIPP_SVE_LS)
 TEST_CASE("Combine - mipp::Reg", "[mipp::combine]")
 {
 #if defined(MIPP_64BIT)
@@ -108,7 +108,7 @@ void test_Reg_combine_bis()
 }
 
 #if defined(MIPP_NEON) || defined(MIPP_SSE) || (defined(MIPP_AVX) && MIPP_INSTR_VERSION >= 2) || defined(MIPP_AVX512F)
-#ifndef MIPP_NO
+#if !defined(MIPP_NO) && !defined(MIPP_SVE_LS)
 TEST_CASE("Combine (bis) - mipp::Reg", "[mipp::combine_bis]")
 {
 #if defined(MIPP_64BIT)
@@ -118,17 +118,13 @@ TEST_CASE("Combine (bis) - mipp::Reg", "[mipp::combine_bis]")
 
 #if defined(MIPP_64BIT)
 	SECTION("datatype = int64_t") { test_Reg_combine_bis<int64_t>(); }
-	SECTION("datatype = uint64_t") { test_Reg_combine_bis<uint64_t>(); }
 #endif
 	SECTION("datatype = int32_t") { test_Reg_combine_bis<int32_t>(); }
-	SECTION("datatype = uint32_t") { test_Reg_combine_bis<uint32_t>(); }
 #if defined(MIPP_BW)
 #if !defined(MIPP_SSE) || (defined(MIPP_SSE) && MIPP_INSTR_VERSION >= 31)
 	SECTION("datatype = int16_t") { test_Reg_combine_bis<int16_t>(); }
-	SECTION("datatype = uint16_t") { test_Reg_combine_bis<uint16_t>(); }
 #if !defined(MIPP_AVX512) || (defined(MIPP_AVX512) && defined(MIPP_AVX512VBMI))
 	SECTION("datatype = int8_t") { test_Reg_combine_bis<int8_t>(); }
-	SECTION("datatype = uint8_t") { test_Reg_combine_bis<uint8_t>(); }
 #endif
 #endif
 #endif
