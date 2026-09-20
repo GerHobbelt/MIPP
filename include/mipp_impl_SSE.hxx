@@ -3881,6 +3881,62 @@
 			return val;
 		}
 	};
+#else // SSE2 fallback: use _mm_shufflelo/hi_epi16 instead of _mm_shuffle_epi8
+	template <red_op<int16_t> OP>
+	struct _reduction<int16_t,OP>
+	{
+		static reg apply(const reg v1) {
+			auto val = v1;
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(1, 0, 3, 2))));
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(2, 3, 0, 1))));
+			auto vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                            _MM_SHUFFLE(2, 3, 0, 1))));
+			return val;
+		}
+	};
+
+	template <Red_op<int16_t> OP>
+	struct _Reduction<int16_t,OP>
+	{
+		static Reg<int16_t> apply(const Reg<int16_t> v1) {
+			auto val = v1;
+			val = OP(val, Reg<int16_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(1, 0, 3, 2)))));
+			val = OP(val, Reg<int16_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(2, 3, 0, 1)))));
+			auto vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<int16_t>(_mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                                        _MM_SHUFFLE(2, 3, 0, 1)))));
+			return val;
+		}
+	};
+
+	template <red_op<uint16_t> OP>
+	struct _reduction<uint16_t,OP>
+	{
+		static reg apply(const reg v1) {
+			auto val = v1;
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(1, 0, 3, 2))));
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(2, 3, 0, 1))));
+			auto vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                            _MM_SHUFFLE(2, 3, 0, 1))));
+			return val;
+		}
+	};
+
+	template <Red_op<uint16_t> OP>
+	struct _Reduction<uint16_t,OP>
+	{
+		static Reg<uint16_t> apply(const Reg<uint16_t> v1) {
+			auto val = v1;
+			val = OP(val, Reg<uint16_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(1, 0, 3, 2)))));
+			val = OP(val, Reg<uint16_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(2, 3, 0, 1)))));
+			auto vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<uint16_t>(_mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                                         _MM_SHUFFLE(2, 3, 0, 1)))));
+			return val;
+		}
+	};
 #endif
 
 #ifdef __SSSE3__
@@ -3944,6 +4000,74 @@
 			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(2, 3, 0, 1)))));
 			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shuffle_epi8 (_mm_castps_si128(val.r), mask_16))));
 			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shuffle_epi8 (_mm_castps_si128(val.r), mask_8))));
+			return val;
+		}
+	};
+#else // SSE2 fallback: use _mm_shufflelo/hi_epi16 + shifts instead of _mm_shuffle_epi8
+	template <red_op<int8_t> OP>
+	struct _reduction<int8_t,OP>
+	{
+		static reg apply(const reg v1) {
+			auto val = v1;
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(1, 0, 3, 2))));
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(2, 3, 0, 1))));
+			// swap 16-bit pairs within 32-bit words (SSE2: _mm_shufflelo/hi_epi16)
+			auto vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                            _MM_SHUFFLE(2, 3, 0, 1))));
+			// swap adjacent bytes within 16-bit words (SSE2: shift + or)
+			vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_or_si128(_mm_srli_epi16(vi, 8), _mm_slli_epi16(vi, 8))));
+			return val;
+		}
+	};
+
+	template <Red_op<int8_t> OP>
+	struct _Reduction<int8_t,OP>
+	{
+		static Reg<int8_t> apply(const Reg<int8_t> v1) {
+			auto val = v1;
+			val = OP(val, Reg<int8_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(1, 0, 3, 2)))));
+			val = OP(val, Reg<int8_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(2, 3, 0, 1)))));
+			// swap 16-bit pairs within 32-bit words (SSE2: _mm_shufflelo/hi_epi16)
+			auto vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<int8_t>(_mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                                        _MM_SHUFFLE(2, 3, 0, 1)))));
+			// swap adjacent bytes within 16-bit words (SSE2: shift + or)
+			vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<int8_t>(_mm_castsi128_ps(_mm_or_si128(_mm_srli_epi16(vi, 8), _mm_slli_epi16(vi, 8)))));
+			return val;
+		}
+	};
+
+	template <red_op<uint8_t> OP>
+	struct _reduction<uint8_t,OP>
+	{
+		static reg apply(const reg v1) {
+			auto val = v1;
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(1, 0, 3, 2))));
+			val = OP(val, _mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val), _MM_SHUFFLE(2, 3, 0, 1))));
+			auto vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                            _MM_SHUFFLE(2, 3, 0, 1))));
+			vi = _mm_castps_si128(val);
+			val = OP(val, _mm_castsi128_ps(_mm_or_si128(_mm_srli_epi16(vi, 8), _mm_slli_epi16(vi, 8))));
+			return val;
+		}
+	};
+
+	template <Red_op<uint8_t> OP>
+	struct _Reduction<uint8_t,OP>
+	{
+		static Reg<uint8_t> apply(const Reg<uint8_t> v1) {
+			auto val = v1;
+			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(1, 0, 3, 2)))));
+			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shuffle_epi32(_mm_castps_si128(val.r), _MM_SHUFFLE(2, 3, 0, 1)))));
+			auto vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_shufflehi_epi16(_mm_shufflelo_epi16(vi, _MM_SHUFFLE(2, 3, 0, 1)),
+			                                                                                        _MM_SHUFFLE(2, 3, 0, 1)))));
+			vi = _mm_castps_si128(val.r);
+			val = OP(val, Reg<uint8_t>(_mm_castsi128_ps(_mm_or_si128(_mm_srli_epi16(vi, 8), _mm_slli_epi16(vi, 8)))));
 			return val;
 		}
 	};

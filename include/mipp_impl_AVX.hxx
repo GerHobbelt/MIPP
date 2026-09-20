@@ -5044,6 +5044,75 @@
 			return val;
 		}
 	};
+#else // AVX fallback (without AVX2): use _mm256_shuffle_ps + extract to 128-bit for SSSE3 byte shuffle
+	template <red_op<int16_t> OP>
+	struct _reduction<int16_t,OP>
+	{
+		static reg apply(const reg v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+
+			auto val = v1;
+			val = OP(val, _mm256_permute2f128_ps(val, val, _MM_SHUFFLE(0,0,0,1)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(1,0,3,2)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(2,3,0,1)));
+			// swap 16-bit pairs: extract low half, SSSE3 shuffle, broadcast back
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			return val;
+		}
+	};
+
+	template <Red_op<int16_t> OP>
+	struct _Reduction<int16_t,OP>
+	{
+		static Reg<int16_t> apply(const Reg<int16_t> v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+
+			auto val = v1;
+			val = OP(val, Reg<int16_t>(_mm256_permute2f128_ps(val.r, val.r, _MM_SHUFFLE(0,0,0,1))));
+			val = OP(val, Reg<int16_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(1,0,3,2))));
+			val = OP(val, Reg<int16_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(2,3,0,1))));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, Reg<int16_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
+			return val;
+		}
+	};
+
+	template <red_op<uint16_t> OP>
+	struct _reduction<uint16_t,OP>
+	{
+		static reg apply(const reg v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+
+			auto val = v1;
+			val = OP(val, _mm256_permute2f128_ps(val, val, _MM_SHUFFLE(0,0,0,1)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(1,0,3,2)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(2,3,0,1)));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			return val;
+		}
+	};
+
+	template <Red_op<uint16_t> OP>
+	struct _Reduction<uint16_t,OP>
+	{
+		static Reg<uint16_t> apply(const Reg<uint16_t> v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+
+			auto val = v1;
+			val = OP(val, Reg<uint16_t>(_mm256_permute2f128_ps(val.r, val.r, _MM_SHUFFLE(0,0,0,1))));
+			val = OP(val, Reg<uint16_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(1,0,3,2))));
+			val = OP(val, Reg<uint16_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(2,3,0,1))));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, Reg<uint16_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
+			return val;
+		}
+	};
 #endif
 
 #ifdef __AVX2__
@@ -5143,6 +5212,92 @@
 			                                                                         mask_16))));
 			val = OP(val, Reg<uint8_t>(_mm256_castsi256_ps(_mm256_shuffle_epi8      (_mm256_castps_si256(val.r),
 			                                                                         mask_8))));
+			return val;
+		}
+	};
+#else // AVX fallback (without AVX2): use _mm256_shuffle_ps + extract to 128-bit for SSSE3 byte shuffle
+	template <red_op<int8_t> OP>
+	struct _reduction<int8_t,OP>
+	{
+		static reg apply(const reg v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+			__m128i mask_8  = _mm_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+
+			auto val = v1;
+			val = OP(val, _mm256_permute2f128_ps(val, val, _MM_SHUFFLE(0,0,0,1)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(1,0,3,2)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(2,3,0,1)));
+			// swap 16-bit pairs: extract low half, SSSE3 shuffle, broadcast back
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			// swap adjacent bytes: extract low half, SSSE3 shuffle, broadcast back
+			lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			sh = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_8));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			return val;
+		}
+	};
+
+	template <Red_op<int8_t> OP>
+	struct _Reduction<int8_t,OP>
+	{
+		static Reg<int8_t> apply(const Reg<int8_t> v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+			__m128i mask_8  = _mm_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+
+			auto val = v1;
+			val = OP(val, Reg<int8_t>(_mm256_permute2f128_ps(val.r, val.r, _MM_SHUFFLE(0,0,0,1))));
+			val = OP(val, Reg<int8_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(1,0,3,2))));
+			val = OP(val, Reg<int8_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(2,3,0,1))));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, Reg<int8_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
+			lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			sh = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_8));
+			val = OP(val, Reg<int8_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
+			return val;
+		}
+	};
+
+	template <red_op<uint8_t> OP>
+	struct _reduction<uint8_t,OP>
+	{
+		static reg apply(const reg v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+			__m128i mask_8  = _mm_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+
+			auto val = v1;
+			val = OP(val, _mm256_permute2f128_ps(val, val, _MM_SHUFFLE(0,0,0,1)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(1,0,3,2)));
+			val = OP(val, _mm256_shuffle_ps     (val, val, _MM_SHUFFLE(2,3,0,1)));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			lo = _mm_castps_si128(_mm256_castps256_ps128(val));
+			sh = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_8));
+			val = OP(val, _mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1));
+			return val;
+		}
+	};
+
+	template <Red_op<uint8_t> OP>
+	struct _Reduction<uint8_t,OP>
+	{
+		static Reg<uint8_t> apply(const Reg<uint8_t> v1) {
+			__m128i mask_16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+			__m128i mask_8  = _mm_set_epi8(14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5, 2, 3, 0, 1);
+
+			auto val = v1;
+			val = OP(val, Reg<uint8_t>(_mm256_permute2f128_ps(val.r, val.r, _MM_SHUFFLE(0,0,0,1))));
+			val = OP(val, Reg<uint8_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(1,0,3,2))));
+			val = OP(val, Reg<uint8_t>(_mm256_shuffle_ps     (val.r, val.r, _MM_SHUFFLE(2,3,0,1))));
+			__m128i lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			__m128 sh  = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_16));
+			val = OP(val, Reg<uint8_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
+			lo = _mm_castps_si128(_mm256_castps256_ps128(val.r));
+			sh = _mm_castsi128_ps(_mm_shuffle_epi8(lo, mask_8));
+			val = OP(val, Reg<uint8_t>(_mm256_insertf128_ps(_mm256_castps128_ps256(sh), sh, 1)));
 			return val;
 		}
 	};
